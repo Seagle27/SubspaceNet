@@ -105,9 +105,7 @@ def sum_of_diags_torch(matrix: torch.Tensor):
             torch.tensor([7, 12, 15, 8, 3])
     """
     diag_sum = []
-    diag_index = torch.linspace(
-        -matrix.shape[0] + 1, matrix.shape[0] - 1, 2 * matrix.shape[0] - 1, dtype=int
-    )
+    diag_index = torch.linspace(-matrix.shape[0] + 1, matrix.shape[0] - 1, 2 * matrix.shape[0] - 1, dtype=torch.int)
     for idx in diag_index:
         diag_sum.append(torch.sum(torch.diagonal(matrix, idx)))
     return torch.stack(diag_sum, dim=0)

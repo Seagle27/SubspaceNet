@@ -10,24 +10,26 @@ class RootMusic(SubspaceMethod):
     def __init__(self, system_model: SystemModel):
         super(RootMusic, self).__init__(system_model)
 
-    def forward(self, cov: torch.Tensor):
-        batch_size = cov.shape[0]
-        _, noise_subspace, _ = self.subspace_separation(cov, number_of_sources=self.system_model.params.M)
-        poly_generator = torch.einsum("bnk, bkn -> bnn", noise_subspace, noise_subspace.conj().transpose(1, 2))
+    def forward(self, cov: torch.Tensor, sources_num: torch.tensor = None):
+        if sources_num is None:
+            M = self.system_model.params.M
+        else:
+            M = sources_num
+        _, noise_subspace, _, _ = self.subspace_separation(cov, number_of_sources=M)
+        poly_generator = torch.einsum("bnk, bkj -> bnj", noise_subspace, noise_subspace.conj().transpose(1, 2))
         diag_sum = self.sum_of_diag(poly_generator)
         roots = self.find_roots(diag_sum)
-        # Calculate doa
-        # angles_prediction_all = self.get_doa_from_roots(roots)
+        angles_prediction_all = self.get_doa_from_roots(roots)
 
         # the actual prediction is for roots that are closest to the unit circle.
-        roots = self.extract_roots_closest_unit_circle(roots, k=self.system_model.params.M)
-        angles_prediction = self.get_doa_from_roots(roots)
-        return angles_prediction
+        closest_roots = self.extract_roots_closest_unit_circle(roots, k=M)
+        angles_prediction = self.get_doa_from_roots(closest_roots)
+        return angles_prediction, angles_prediction_all, roots
 
     def get_doa_from_roots(self, roots):
         roots_phase = torch.angle(roots)
         angle_predicted = torch.arcsin(
-            (1 / (2 * np.pi * self.system_model.dist_array_elems["Narrowband"])) * roots_phase)
+            (1 / (2 * np.pi * self.system_model.dist_array_elems["NarrowBand"])) * roots_phase)
         return angle_predicted
 
     def extract_roots_closest_unit_circle(self, roots, k: int):
@@ -39,17 +41,17 @@ class RootMusic(SubspaceMethod):
 
     def sum_of_diag(self, tensor: torch.Tensor):
         tensor = self.__check_diag_sums_dim(tensor)
-        N = torch.shape[-1]
-        diag_indcies = torch.linspace(-N + 1, N - 1, 2 * N - 1)
+        N = tensor.shape[-1]
+        diag_indcies = torch.linspace(-N + 1, N - 1, 2 * N - 1, dtype=torch.int)
         sum_of_diags = torch.zeros(tensor.shape[0], 2 * N - 1)
         for idx, diag_idx in enumerate(diag_indcies):
             sum_of_diags[:, idx] = torch.sum(torch.diagonal(tensor, dim1=-2, dim2=-1, offset=diag_idx), dim=-1)
         return sum_of_diags
 
     def find_roots(self, coeffs: torch.Tensor):
-        A = torch.diag(torch.ones(coeffs.shape[-1] - 2, dtype=coeffs.dtype), -1)
+        A = torch.diag(torch.ones(coeffs.shape[-1] - 2, dtype=coeffs.dtype), -1)  # -1 means the diagonal below the main diagonal
         A = A.repeat(coeffs.shape[0], 1, 1)  # repeat for all elements in the batch
-        A[:, 0, :] = -coeffs[:, 1:] / coeffs[:, 0]
+        A[:, 0, :] = -coeffs[:, 1:] / coeffs[:, 0].unsqueeze(1)
         roots = torch.linalg.eigvals(A)
         return roots
 

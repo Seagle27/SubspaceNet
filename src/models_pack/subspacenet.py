@@ -186,7 +186,7 @@ class SubspaceNet(ParentModel):
         """
         if self.field_type == "Far":
             if diff_method.startswith("root_music"):
-                self.diff_method = root_music
+                self.diff_method = RootMusic(system_model=system_model)
             elif diff_method.startswith("esprit"):
                 self.diff_method = ESPRIT(system_model=system_model)
             elif diff_method.startswith("music_1D"):
