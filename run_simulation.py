@@ -81,6 +81,7 @@ def __run_simulation(**kwargs):
         .set_parameter("eta", SYSTEM_MODEL_PARAMS["eta"])
         .set_parameter("bias", SYSTEM_MODEL_PARAMS["bias"])
         .set_parameter("sv_noise_var", SYSTEM_MODEL_PARAMS["sv_noise_var"])
+        .set_parameter("array_form", SYSTEM_MODEL_PARAMS["array_form"])
     )
     system_model = SystemModel(system_model_params)
     # Generate model configuration
@@ -239,13 +240,13 @@ def __run_simulation(**kwargs):
             criterion=criterion,
             system_model=system_model,
             figures=figures,
-            plot_spec=False,
+            plot_spec=True,
             models=EVALUATION_PARAMS["models"],
             augmented_methods=EVALUATION_PARAMS["augmented_methods"],
             subspace_methods=EVALUATION_PARAMS["subspace_methods"],
             model_tmp=model
         )
-        # plt.show()
+        plt.show()
         print("END OF EVALUATION")
         if save_to_file:
             sys.stdout.close()

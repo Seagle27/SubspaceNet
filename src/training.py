@@ -44,7 +44,7 @@ from src.utils import *
 from src.criterions import *
 from src.system_model import SystemModel, SystemModelParams
 from src.models import (SubspaceNet, DeepCNN, DeepAugmentedMUSIC,
-                        ModelGenerator, DCDMUSIC, TransMUSIC, DeepRootMUSIC)
+                        ModelGenerator, DCDMUSIC, TransMUSIC, DeepRootMUSIC, SparseNet)
 from src.evaluation import evaluate_dnn_model
 from src.data_handler import TimeSeriesDataset, collate_fn, SameLengthBatchSampler
 
@@ -517,6 +517,18 @@ def train_model(training_params: TrainingParams, checkpoint_path=None) -> dict:
                 angles_pred = model_output
                 raise Exception(f"train_model: those model weren't tested yet."
                                 f" Deep Augmented MUSIC or DeepCNN or DeepRootMUSIC")
+
+            elif isinstance(model, SparseNet):
+                model_output = model(x, sources_num=sources_num)
+                # in this case there are 2 labels - angles and distances.
+                if training_params.training_objective.endswith("angle"):
+                    angles_pred = model_output[0]
+                    source_estimation = model_output[1]
+                    eigen_regularization = model_output[2]
+                else:
+                    raise Exception(f"train_model: Unrecognized training objective"
+                                    f" {training_params.training_objective}, for SubspaceNet model")
+
             ############################################################################################################
             # calculate the accuracy for the source estimation
             if source_estimation is not None:
@@ -557,6 +569,10 @@ def train_model(training_params: TrainingParams, checkpoint_path=None) -> dict:
                 train_loss = training_params.criterion(angles_pred.float(), angles.float())
                 warnings.warn(f"train_model: those model weren't tested yet."
                                 f" Deep Augmented MUSIC or DeepCNN or DeepRootMUSIC")
+            elif isinstance(model, SparseNet):
+                if training_params.training_objective == "angle":
+                    train_loss = training_params.criterion(angles_pred, angles)  #TODO: Complete
+
             else:
                 raise Exception(f"Model type {training_params.model_type} is not defined")
 

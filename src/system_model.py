@@ -14,6 +14,7 @@ This script defines the SystemModel class for defining the settings of the DoA e
 # Imports
 import numpy as np
 from dataclasses import dataclass
+from src.sparse_array_utils import get_array_locations, get_virtual_ula_array
 
 
 @dataclass
@@ -52,6 +53,7 @@ class SystemModelParams:
     eta = 0
     bias = 0
     sv_noise_var = 0
+    array_form = "ULA"
 
     def set_parameter(self, name: str, value):
         """
@@ -96,6 +98,7 @@ class SystemModel(object):
 
         """
         self.array = None
+        self.virtual_array = None
         self.dist_array_elems = None
         self.time_axis = None
         self.f_sampling = None
@@ -105,8 +108,9 @@ class SystemModel(object):
         self.params = system_model_params
         # Assign signal type parameters
         self.define_scenario_params()
-        # Define array indices
-        self.create_array()
+
+        # # Define array indices
+        self.create_array(system_model_params.array_form)  # TODO: Support sparse arrays
         # Calculation for the Fraunhofer and Fresnel
         self.fraunhofer, self.fresnel = self.calc_fresnel_fraunhofer_distance()
 
@@ -146,9 +150,15 @@ class SystemModel(object):
                          / (2 * (self.max_freq["Broadband"] - self.min_freq["Broadband"])),
         }
 
-    def create_array(self):
+    def create_array(self, array_form: str):
         """create an array of sensors locations, around to origin."""
-        self.array = np.linspace(0, self.params.N, self.params.N, endpoint=False)
+        if array_form.lower() == 'ula':
+            self.array = np.linspace(0, self.params.N, self.params.N, endpoint=False)
+        elif array_form.lower().startswith('mra'):
+            self.array = get_array_locations(array_form)
+            self.virtual_array = get_virtual_ula_array(self.array)
+        else:
+            raise ValueError(f"{array_form} array form isn't supported")
 
     def calc_fresnel_fraunhofer_distance(self) -> tuple:
         """

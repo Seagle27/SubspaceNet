@@ -17,6 +17,8 @@ from src.models_pack.dcd_music import DCDMUSIC
 from src.models_pack.deep_augmented_music import DeepAugmentedMUSIC
 from src.models_pack.deep_cnn import DeepCNN
 from src.models_pack.deep_root_music import DeepRootMUSIC
+from src.models_pack.sparse_net import SparseNet
+
 
 # warnings.simplefilter("ignore")
 
@@ -129,6 +131,9 @@ class ModelGenerator(object):
             self.__set_dcd_music()
         elif self.model_type.startswith("TransMUSIC"):
             self.__set_transmusic()
+
+        elif self.model_type.startswith("SparseNet"):
+            self.__set_sparse_net()
         else:
             raise Exception(f"ModelGenerator.set_model: Model type {self.model_type} is not defined")
 
@@ -184,6 +189,14 @@ class ModelGenerator(object):
         tau = self.model_params.get("tau")
         activation_val = self.model_params.get("activation_value")
         self.model = DeepRootMUSIC(tau=tau, activation_value=activation_val)
+
+    def __set_sparse_net(self):
+        tau = self.model_params.get("tau")
+        diff_method = self.model_params.get("diff_method")
+        field_type = self.model_params.get("field_type")
+        self.model = SparseNet(tau=tau,
+                               diff_method=diff_method,
+                               system_model=self.system_model)
 
     def __verify_model_params(self, model_params):
         """
