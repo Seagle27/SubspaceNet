@@ -14,7 +14,7 @@ This script defines the SystemModel class for defining the settings of the DoA e
 # Imports
 import numpy as np
 from dataclasses import dataclass
-from src.sparse_array_utils import get_array_locations, get_virtual_ula_array
+from src.sparse_array import get_array_locations, get_virtual_ula_array
 
 
 @dataclass
@@ -99,18 +99,20 @@ class SystemModel(object):
         """
         self.array = None
         self.virtual_array = None
+
         self.dist_array_elems = None
         self.time_axis = None
         self.f_sampling = None
         self.max_freq = None
         self.min_freq = None
         self.f_rng = None
+        self.is_sparse_array = False if system_model_params.array_form.lower() == 'ula' else True
         self.params = system_model_params
         # Assign signal type parameters
         self.define_scenario_params()
 
         # # Define array indices
-        self.create_array(system_model_params.array_form)  # TODO: Support sparse arrays
+        self.create_array(system_model_params.array_form)
         # Calculation for the Fraunhofer and Fresnel
         self.fraunhofer, self.fresnel = self.calc_fresnel_fraunhofer_distance()
 

@@ -44,7 +44,7 @@ from src.methods_pack.root_music import RootMusic
 from src.methods_pack.esprit import ESPRIT
 from src.methods_pack.mle import MLE
 from src.models import (ModelGenerator, SubspaceNet, DCDMUSIC, DeepAugmentedMUSIC,
-                        DeepCNN, DeepRootMUSIC, TransMUSIC)
+                        DeepCNN, DeepRootMUSIC, TransMUSIC, SparseNet)
 from src.plotting import plot_spectrum
 from src.system_model import SystemModel, SystemModelParams
 
@@ -523,7 +523,10 @@ def evaluate_model_based(
                     Rx = model_based.pre_processing(x, mode="sps")
                 else:
                     # Conventional
-                    Rx = model_based.pre_processing(x, mode="sample")
+                    if system_model.is_sparse_array:
+                        Rx = model_based.pre_processing(x, mode="sparse")
+                    else:
+                        Rx = model_based.pre_processing(x, mode="sample")
                 angles_prediction, sources_num_estimation, _ = model_based(Rx, sources_num=sources_num)
                 # If the amount of predictions is less than the amount of sources
                 # predictions = add_random_predictions(M, predictions, algorithm)

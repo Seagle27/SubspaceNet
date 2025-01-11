@@ -240,13 +240,13 @@ def __run_simulation(**kwargs):
             criterion=criterion,
             system_model=system_model,
             figures=figures,
-            plot_spec=True,
+            plot_spec=False,
             models=EVALUATION_PARAMS["models"],
             augmented_methods=EVALUATION_PARAMS["augmented_methods"],
             subspace_methods=EVALUATION_PARAMS["subspace_methods"],
             model_tmp=model
         )
-        plt.show()
+        # plt.show()
         print("END OF EVALUATION")
         if save_to_file:
             sys.stdout.close()

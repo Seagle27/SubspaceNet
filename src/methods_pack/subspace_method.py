@@ -92,6 +92,8 @@ class SubspaceMethod(nn.Module):
             Rx = self.__sample_covariance(x)
         elif mode == "sps":
             Rx = self.__spatial_smoothing_covariance(x)
+        elif mode == "sparse":
+            Rx = self.__virtual_array_covariance(x)
         else:
             raise ValueError(
                 f"SubspaceMethod.pre_processing: method {mode} is not recognized for covariance calculation.")
@@ -104,16 +106,50 @@ class SubspaceMethod(nn.Module):
 
         Args:
         -----
-            X (np.ndarray): Input samples matrix.
+            X (torch.Tensor): Input samples matrix.
 
         Returns:
         --------
-            covariance_mat (np.ndarray): Covariance matrix.
+            Rx (torch.Tensor): Covariance matrix.
         """
         if x.dim() == 2:
             x = x[None, :, :]
         batch_size, sensor_number, samples_number = x.shape
         Rx = torch.einsum("bmt, btl -> bml", x, torch.conj(x).transpose(1, 2)) / samples_number
+        return Rx
+
+    def __virtual_array_covariance(self, x: torch.Tensor):
+        """
+        Calculates the virtual array covariance matrix, based on the paper: "Remarks on the Spatial Smoothing Step in
+        Coarray MUSIC"
+
+         Parameters
+         ----------
+          X (torch.Tensor): Input samples matrix.
+          system_model (SystemModel): settings of the system model
+
+        Returns
+        -------
+        Rx (torch.Tensor): virtual array's covariance matrix
+
+        """
+        R_real_array = self.__sample_covariance(x)
+
+        L = len(self.system_model.virtual_array)
+        Rx = torch.zeros(R_real_array.shape[0], L, L, dtype=torch.complex128)
+        differences_array = self.system_model.array[:, None] - self.system_model.array[None, :]
+        x_s_diff = torch.zeros(x.shape[0], 2*L - 1, dtype=torch.complex128)  # x.shape[0] = batch size
+        max_sensor = np.max(self.system_model.virtual_array)
+
+        for i, lag in enumerate(range(-max_sensor, max_sensor + 1)):
+            pairs = torch.from_numpy(differences_array) == lag
+            if pairs.any():
+                x_s_diff[:, i] = torch.mean(R_real_array[:, pairs], dim=1)
+
+        for j in range(L):
+            start_idx = L - 1 - j
+            Rx[:, :, j] = x_s_diff[:, start_idx:start_idx + L]
+
         return Rx
 
     def __spatial_smoothing_covariance(self, x: torch.Tensor):

@@ -89,7 +89,7 @@ class SubspaceNet(ParentModel):
         """
         x = self.pre_processing(x)
         # Rx_tau shape: [Batch size, tau, 2N, N]
-        self.N = x.shape[-1]
+        N = x.shape[-1]
         self.batch_size = x.shape[0]
         ############################
         ## Architecture flow ##
@@ -114,8 +114,8 @@ class SubspaceNet(ParentModel):
         # Reshape Output shape: [Batch size, 2N, N]
         Rx_View = Rx.view(Rx.size(0), Rx.size(2), Rx.size(3))
         # Real and Imaginary Reconstruction
-        Rx_real = Rx_View[:, :self.N, :]  # Shape: [Batch size, N, N])
-        Rx_imag = Rx_View[:, self.N:, :]  # Shape: [Batch size, N, N])
+        Rx_real = Rx_View[:, :N, :]  # Shape: [Batch size, N, N])
+        Rx_imag = Rx_View[:, N:, :]  # Shape: [Batch size, N, N])
         Kx_tag = torch.complex(Rx_real, Rx_imag)  # Shape: [Batch size, N, N])
         # Apply Gram operation diagonal loading
         Rz = gram_diagonal_overload(
