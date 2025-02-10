@@ -59,29 +59,40 @@ class Samples(SystemModel):
 
         """
 
-        def create_doa_with_gap(gap: float, M):
-            """Create angles with a value gap.
+        def create_doa_with_gap(gap: float, M: int, doa_range=(-75, 75)):
+            """
+            Create M DOA values in the given range (in degrees) such that the difference
+            between consecutive values is at least 'gap' (in degrees).
+
+            The method first reserves (M-1)*gap of the total range, then distributes the
+            remaining extra space randomly among the points.
 
             Args:
-            -----
-                gap (float): Minimal gap value in degrees.
+                gap (float): Minimal gap (in degrees) between consecutive DOAs.
+                M (int): Number of DOA values to generate.
+                doa_range (tuple): A tuple (L, U) specifying the range in degrees.
 
             Returns:
-            --------
-                np.ndarray: DOA array.
+                np.ndarray: An array of DOA values (sorted in ascending order) that satisfy the minimal gap.
 
+            Raises:
+                ValueError: If the range is too small for M points with the given gap.
             """
-            while True:
-                # DOA = np.round(np.random.rand(M) * 180, decimals=2) - 90
-                DOA = np.random.randint(-55, 55, M)
-                DOA.sort()
-                diff_angles = np.array(
-                    [np.abs(DOA[i + 1] - DOA[i]) for i in range(M - 1)]
-                )
-                if (np.sum(diff_angles > gap) == M - 1) and (
-                    np.sum(diff_angles < (180 - gap)) == M - 1
-                ):
-                    break
+            L, U = doa_range
+            total_range = U - L
+
+            if total_range < (M - 1) * gap:
+                raise ValueError("Invalid parameters. Use a smaller gap or a larger DOA range.")
+
+            # The remaining space after reserving the minimum gap
+            extra = total_range - (M - 1) * gap
+
+            # Generate M random numbers in [0, 1] and sort them.
+            r = np.sort(np.random.rand(M))
+
+            # Compute the DOAs: fixed gap increments plus a random extra offset.
+            DOA = L + gap * np.arange(M) + extra * r
+
             return DOA
 
         if doa == None:
