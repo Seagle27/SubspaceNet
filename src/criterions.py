@@ -33,6 +33,7 @@ import torch.nn as nn
 import torch
 from itertools import permutations
 from src.utils import *
+from scipy.optimize import linear_sum_assignment
 import time
 BALANCE_FACTOR = 1.0
 
@@ -120,8 +121,8 @@ class RMSPELoss(nn.Module):
         else:
             self.balance_factor = nn.Parameter(torch.Tensor([balance_factor])).to(device).to(torch.float64)
 
-    def forward(self, doa_predictions: torch.Tensor, doa: torch.Tensor,
-                distance_predictions: torch.Tensor = None, distance: torch.Tensor = None):
+    def forward(self, doa_predictions: torch.Tensor, doa_targets: torch.Tensor,
+                distance_predictions: torch.Tensor = None, distance_targets: torch.Tensor = None):
         """
         Compute the RMSPE loss between the predictions and target values.
         The forward method takes two input tensors: doa_predictions and doa,
@@ -149,33 +150,65 @@ class RMSPELoss(nn.Module):
         Raises:
             None
         """
-        # Calculate RMSPE loss for only DOA
-        num_sources = doa_predictions.shape[1]
-        perm = list(permutations(range(num_sources), num_sources))
-        num_of_perm = len(perm)
+        B, num_sources = doa_predictions.shape
 
-        err_angle = (doa_predictions[:, perm] - torch.tile(doa[:, None, :], (1, num_of_perm, 1)).to(torch.float32))
-        # Calculate error with modulo pi in the range [-pi/2, pi/2]
-        err_angle += torch.pi / 2
-        err_angle %= torch.pi
-        err_angle -= torch.pi / 2
-        rmspe_angle = np.sqrt(1 / num_sources) * torch.linalg.norm(err_angle, dim=-1)
-        if distance is None:
-            rmspe, min_idx = torch.min(rmspe_angle, dim=-1)
+        # Compute the pairwise cost matrix for angles (B, num_sources, num_sources)
+        diff_matrix_angle = self.compute_modulo_error(doa_predictions.unsqueeze(2), doa_targets.unsqueeze(1))
+        cost_matrix_angle = diff_matrix_angle ** 2
+
+        # Use the loop-based assignment
+        assignments = self.batch_hungarian_assignments(cost_matrix_angle)  # shape: (B, num_sources)
+
+        batch_indices = torch.arange(B, device=doa_predictions.device).unsqueeze(1).expand(B, num_sources)
+        row_indices = torch.arange(num_sources, device=doa_predictions.device).unsqueeze(0).expand(B, num_sources)
+        optimal_angle_errors = diff_matrix_angle[batch_indices, row_indices, assignments]
+        rmspe_angle = torch.sqrt(torch.sum(optimal_angle_errors ** 2, dim=1) / num_sources)
+
+        if distance_targets is None:
+            total_loss = torch.sum(rmspe_angle)
+            return total_loss
         else:
-            err_distance = (distance_predictions[:, perm].to(device) - torch.tile(distance[:, None, :], (1, num_of_perm, 1)).to(device))
-            rmspe_distance = np.sqrt(1 / num_sources) * torch.linalg.norm(err_distance, dim=-1)
-            rmspe_angle, min_idx = torch.min(rmspe_angle, dim=-1)
-            # always consider the permutation which yields the minimal RMSPE over the angles.
-            rmspe_distance = torch.gather(rmspe_distance, 1, min_idx.unsqueeze(0)).squeeze()
-            rmspe = self.balance_factor * rmspe_angle + (1 - self.balance_factor) * rmspe_distance
-        result = torch.sum(rmspe)
-        if distance is None:
-            return result
-        else:
-            result_angle = torch.sum(rmspe_angle)
-            result_distance = torch.sum(rmspe_distance)
-            return result, result_angle, result_distance
+            diff_matrix_distance = distance_predictions.unsqueeze(2) - distance_targets.unsqueeze(1)
+            optimal_distance_errors = diff_matrix_distance[batch_indices, row_indices, assignments]
+            rmspe_distance = torch.sqrt(torch.sum(optimal_distance_errors ** 2, dim=1) / num_sources)
+            combined_loss = self.balance_factor * rmspe_angle + (1 - self.balance_factor) * rmspe_distance
+            total_loss = torch.sum(combined_loss)
+            total_angle_loss = torch.sum(rmspe_angle)
+            total_distance_loss = torch.sum(rmspe_distance)
+            return total_loss, total_angle_loss, total_distance_loss
+
+    @staticmethod
+    def batch_hungarian_assignments(cost_matrices):
+        """
+        cost_matrices: Tensor of shape (B, n, n)
+        Returns:
+            Tensor of shape (B, n) containing the assignment (i.e. permutation indices)
+        """
+        assignments = []
+        B = cost_matrices.shape[0]
+        for i in range(B):
+            # Force a real tensor with its own storage:
+            cost_matrix = cost_matrices[i].clone().detach().cpu()
+            cost_np = cost_matrix.contiguous().numpy()
+            _, col_ind = linear_sum_assignment(cost_np)
+            assignments.append(torch.tensor(col_ind, device=cost_matrices.device))
+        return torch.stack(assignments, dim=0)
+
+    @staticmethod
+    def compute_modulo_error(pred, target):
+        """
+        Compute the error with modulo pi so that the differences are in [-pi/2, pi/2].
+
+        Args:
+            pred (torch.Tensor): Tensor of shape (..., 1) or (..., n, 1)
+            target (torch.Tensor): Tensor of shape (..., 1) or (..., 1, n)
+
+        Returns:
+            torch.Tensor: The error tensor broadcasted to shape (..., n, n) if pred and target are unsqueezed.
+        """
+        diff = pred - target  # Broadcasting happens here.
+        diff = (diff + torch.pi / 2) % torch.pi - torch.pi / 2
+        return diff
 
             # rmspe = []
             # for iter in range(doa_predictions.shape[0]):

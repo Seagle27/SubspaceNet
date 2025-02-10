@@ -4,12 +4,16 @@ import numpy as np
 def get_array_locations(array_form: str):
     array_type = array_form.lower()
     if array_type.startswith("mra"):
+        if "4" in array_type:
+            return np.array([0, 1, 4, 6])
         if "5" in array_type:
             return np.array([0, 1, 4, 7, 9])
         elif "6" in array_type:
             return np.array([0, 1, 6, 9, 11, 13])
         elif "7" in array_type:
             return np.array([0, 1, 4, 10, 12, 15, 17])
+        elif "8" in array_type:
+            return np.array([0, 1, 4, 10, 16, 18, 21, 23])
         else:
             raise Exception(f"{array_type} isn't supported")
     else:
