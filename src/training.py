@@ -28,7 +28,7 @@ Attributes:
 None
 """
 import warnings
-EIGEN_REGULARIZATION_WEIGHT = 100
+EIGEN_REGULARIZATION_WEIGHT = 0
 # Imports
 import matplotlib.pyplot as plt
 import copy

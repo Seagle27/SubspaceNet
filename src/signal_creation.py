@@ -59,7 +59,7 @@ class Samples(SystemModel):
 
         """
 
-        def create_doa_with_gap(gap: float, M: int, doa_range=(-75, 75)):
+        def create_doa_with_gap(gap: float, M: int, doa_range=(-55, 55)):
             """
             Create M DOA values in the given range (in degrees) such that the difference
             between consecutive values is at least 'gap' (in degrees).

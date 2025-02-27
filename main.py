@@ -36,18 +36,19 @@ scenario_dict = {
 }
 
 system_model_params = {
-    "N": 15,                                    # number of antennas
-    "M": 2,                                     # number of sources
+    "N": 6,                                    # number of antennas
+    "M": 7,                                     # number of sources
     "T": 100,                                   # number of snapshots
-    "snr": 0,                                # if defined, values in scenario_dict will be ignored
-    "field_type": "Near",                       # Near, Far
+    "snr": 10,                                # if defined, values in scenario_dict will be ignored
+    "field_type": "Far",                       # Near, Far
     "signal_nature": "non-coherent",                      # if defined, values in scenario_dict will be ignored
     "eta": 0.0,                                   # steering vector error
     "bias": 0,
-    "sv_noise_var": 0.0
+    "sv_noise_var": 0.0,
+    "array_form": 'mra-6',
 }
 model_config = {
-    "model_type": "SubspaceNet",                # SubspaceNet, DCDMUSIC, DeepCNN, TransMUSIC, DR_MUSIC
+    "model_type": "SparseNet",                # SubspaceNet, DCDMUSIC, DeepCNN, TransMUSIC, DR_MUSIC, SparseNet
     "model_params": {}
 }
 if model_config.get("model_type") == "SubspaceNet":
@@ -61,12 +62,16 @@ elif model_config.get("model_type") == "DCDMUSIC":
 elif model_config.get("model_type") == "DeepCNN":
     model_config["model_params"]["grid_size"] = 361
 
+elif model_config.get("model_type") == "SparseNet":
+    model_config["model_params"]["diff_method"] = "esprit"  # esprit, music_1D, music_2D
+    model_config["model_params"]["tau"] = 8
+
 training_params = {
-    "samples_size": 1024,
+    "samples_size": 1024*30,
     "train_test_ratio": .1,
     "training_objective": "angle",       # angle, range, source_estimation
     "batch_size": 256,
-    "epochs": 10,
+    "epochs": 150,
     "optimizer": "Adam",                        # Adam, SGD
     "learning_rate": 0.001,
     "weight_decay": 1e-9,
@@ -97,24 +102,24 @@ evaluation_params = {
         # "2D-MUSIC",
     ],
     "subspace_methods": [
-        # "esprit",
+        "esprit",
         # "music_1d",
         # "root_music",
         # "mvdr",
         # "bb-music",
-        "2D-MUSIC",
+        # "2D-MUSIC",
         # "CCRB"
     ]
 }
 simulation_commands = {
-    "SAVE_TO_FILE": False,
+    "SAVE_TO_FILE": True,
     "CREATE_DATA": True,
     "LOAD_MODEL": False,
     "TRAIN_MODEL": True,
-    "SAVE_MODEL": False,
+    "SAVE_MODEL": True,
     "EVALUATE_MODE": True,
     "PLOT_RESULTS": False,                       # if True, the learning curves will be plotted
-    "PLOT_LOSS_RESULTS": False,                  # if True, the RMSE results of evaluation will be plotted
+    "PLOT_LOSS_RESULTS": True,                  # if True, the RMSE results of evaluation will be plotted
     "PLOT_ACC_RESULTS": False,                  # if True, the accuracy results of evaluation will be plotted
     "SAVE_PLOTS": True,                         # if True, the plots will be saved to the results folder
 }
