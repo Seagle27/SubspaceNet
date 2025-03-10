@@ -96,8 +96,8 @@ def __run_simulation(**kwargs):
     samples_size = TRAINING_PARAMS["samples_size"]  # Overall dateset size
     train_test_ratio = TRAINING_PARAMS["train_test_ratio"]  # training and testing datasets ratio
     # Sets simulation filename
-    simulation_filename = get_simulation_filename(system_model_params=system_model_params,
-                                                  model_config=model_config)
+    # simulation_filename = get_simulation_filename(system_model_params=system_model_params,
+    #                                               model_config=model_config)
     # Print new simulation intro
     print("------------------------------------")
     print("---------- New Simulation ----------")
@@ -122,9 +122,9 @@ def __run_simulation(**kwargs):
                 load_data = False
         if evaluate_mode:
             try:
-                generic_test_dataset, _ = load_datasets(
+                generic_test_dataset = load_datasets(
                     system_model_params=system_model_params,
-                    samples_size=int(train_test_ratio * samples_size),
+                    samples_size=samples_size,
                     datasets_path=datasets_path,
                     train_test_ratio=train_test_ratio,
                     is_training=False,
@@ -144,11 +144,13 @@ def __run_simulation(**kwargs):
             train_dataset, _ = create_dataset(
                 system_model_params=system_model_params,
                 samples_size=samples_size,
+                model_type=model_config.model_type,
                 save_datasets=True,
                 datasets_path=datasets_path,
                 true_doa=TRAINING_PARAMS["true_doa_train"],
                 true_range=TRAINING_PARAMS["true_range_train"],
                 phase="train",
+                real_antenna_pattern=SYSTEM_MODEL_PARAMS['antenna_pattern']
             )
         if evaluate_mode:
             # Generate test dataset
@@ -161,6 +163,7 @@ def __run_simulation(**kwargs):
                 true_doa=TRAINING_PARAMS["true_doa_test"],
                 true_range=TRAINING_PARAMS["true_range_test"],
                 phase="test",
+                real_antenna_pattern=SYSTEM_MODEL_PARAMS['antenna_pattern']
             )
 
     if train_model:

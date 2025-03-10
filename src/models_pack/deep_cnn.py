@@ -74,3 +74,4 @@ class DeepCNN(nn.Module):
         X = self.fc4(X)  # [Batch size, grid_size]
         X = self.Sigmoid(X)
         return X
+

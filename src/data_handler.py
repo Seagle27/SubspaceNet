@@ -48,6 +48,7 @@ def create_dataset(
         true_doa: list = None,
         true_range: list = None,
         phase: str = None,
+        real_antenna_pattern:bool = False,
 ):
     """
     Generates a synthetic dataset based on the specified parameters and model type.
@@ -71,7 +72,7 @@ def create_dataset(
     time_series = []
     labels = []
     sources_num = []
-    samples_model = Samples(system_model_params)
+    samples_model = Samples(system_model_params, real_antenna_pattern)
 
     if model_type is None or not model_type.startswith("DeepCNN"):
         for i in tqdm(range(samples_size)):
@@ -163,7 +164,8 @@ def read_data(path: str):
 
     """
     assert isinstance(path, (str, Path))
-    data = torch.load(path)
+    with torch.serialization.safe_globals([TimeSeriesDataset, Samples]):
+        data = torch.load(path)
     return data
 
 

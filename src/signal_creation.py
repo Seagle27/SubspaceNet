@@ -16,6 +16,7 @@ This class is used for defining the samples model.
 import numpy as np
 from src.system_model import SystemModel, SystemModelParams
 from src.utils import D2R
+from src.read_array import load_arrays_from_txt
 
 class Samples(SystemModel):
     """
@@ -37,7 +38,7 @@ class Samples(SystemModel):
         signal_creation(signal_mean=0, signal_variance=1, SNR=10): Creates signals based on the specified mode and parameters.
     """
 
-    def __init__(self, system_model_params: SystemModelParams):
+    def __init__(self, system_model_params: SystemModelParams, use_real_antenna_pattern: bool = False):
         """Initializes a Samples object.
 
         Args:
@@ -48,6 +49,9 @@ class Samples(SystemModel):
         """
         super().__init__(system_model_params)
         self.distances = None
+        self.antenna_pattern_data = None
+        if use_real_antenna_pattern:
+            self.antenna_pattern_data = load_arrays_from_txt("src/arrays.txt")
 
     def set_doa(self, doa, M):
         """
@@ -59,7 +63,7 @@ class Samples(SystemModel):
 
         """
 
-        def create_doa_with_gap(gap: float, M: int, doa_range=(-55, 55)):
+        def create_doa_with_gap(gap: float, M: int, doa_range=(-60, 60)):
             """
             Create M DOA values in the given range (in degrees) such that the difference
             between consecutive values is at least 'gap' (in degrees).
@@ -171,7 +175,10 @@ class Samples(SystemModel):
         # Generate Narrowband samples
         if self.params.signal_type.startswith("NarrowBand"):
             if self.params.field_type.startswith("Far"):
-                A = np.array([self.steering_vec(theta) for theta in self.doa]).T
+                if self.antenna_pattern_data:
+                    A = self.antenna_pattern_steering_vec(self.doa, self.antenna_pattern_data).T
+                else:
+                    A = np.array([self.steering_vec(theta) for theta in self.doa]).T
                 samples = (A @ signal) + noise
             elif self.params.field_type.startswith("Near"):
                 A = self.steering_vec(theta=self.doa, distance=self.distances, nominal=False, generate_search_grid=False)

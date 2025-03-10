@@ -13,7 +13,11 @@ This script defines the SystemModel class for defining the settings of the DoA e
 
 # Imports
 import numpy as np
+import torch
 from dataclasses import dataclass
+from scipy import interpolate
+
+from src.read_array import get_interp_data
 from src.sparse_array import get_array_locations, get_virtual_ula_array
 
 
@@ -309,7 +313,33 @@ class SystemModel(object):
             return np.exp(2 * -1j * np.pi * time_delay) + mis_geometry_noise
         return np.exp(2 * -1j * np.pi * time_delay)
 
+    @staticmethod
+    def antenna_pattern_steering_vec(theta, antenna_pattern_data):
+        theta_deg = np.array(np.rad2deg(theta))
+        azimuth_base_array = antenna_pattern_data[0]
+        amps_array = antenna_pattern_data[2]
+        # normalized_amp =
+        # normalized_amp = torch.nn.functional.normalize(amps_array)
 
+
+        phase_array = antenna_pattern_data[1]
+
+        interp_object_phase = \
+            interpolate.interp1d(azimuth_base_array, phase_array, axis=0,
+                                 bounds_error=False, fill_value=(phase_array[0, :], phase_array[-1, :]))
+        interp_object_amps = (
+            interpolate.interp1d(azimuth_base_array, amps_array, axis=0,
+                                 bounds_error=False, fill_value=(amps_array[0, :], amps_array[-1, :])))
+        phase = interp_object_phase(theta_deg)
+        amps = interp_object_amps(theta_deg)
+
+
+
+        # amp_phase_arr = get_interp_data(theta_deg, file_path_to_base_data)
+        phase = torch.deg2rad(torch.Tensor(phase))
+        amp = torch.Tensor(10 ** (amps / 20))
+        steering_vec = amp * torch.exp(1j * phase)
+        return steering_vec
     # def __str__(self):
     #     """Returns a string representation of the SystemModel object.
     #     ...
