@@ -94,6 +94,10 @@ class SubspaceMethod(nn.Module):
             Rx = self.__spatial_smoothing_covariance(x)
         elif mode == "sparse":
             Rx = self.__virtual_array_covariance(x)
+        elif mode == "sparse_sps":
+            Rx = self.__virtual_array_covariance(x)
+            Rx = self.__spatial_smoothing_coarray_cov(Rx)
+
         else:
             raise ValueError(
                 f"SubspaceMethod.pre_processing: method {mode} is not recognized for covariance calculation.")
@@ -184,6 +188,56 @@ class SubspaceMethod(nn.Module):
             Rx_smoothed += sub_covariance.to(device) / number_of_sub_arrays
         # Divide overall matrix by the number of sources
         return Rx_smoothed
+
+    @staticmethod
+    def __spatial_smoothing_coarray_cov(R_coarray: torch.Tensor, sub_array_size: int = None) -> torch.Tensor:
+        """
+        Perform forward spatial smoothing on the coarray covariance matrix R_coarray.
+
+        Parameters
+        ----------
+        R_coarray : torch.Tensor
+            The coarray covariance, shape = [batch_size, L, L].
+            - L is the size of the virtual ULA in the coarray domain.
+        sub_array_size : int (optional)
+            The length of each sub-subarray in the coarray domain.
+            If None, it will default to L//2 + 1 (typical choice).
+
+        Returns
+        -------
+        R_smoothed : torch.Tensor
+            The smoothed covariance, shape = [batch_size, sub_array_size, sub_array_size].
+            This can then be used in MUSIC/ESPRIT for coherent sources.
+        """
+        # R_coarray has shape [batch_size, L, L]
+        batch_size, L, _ = R_coarray.shape
+
+        # Default choice: K = L//2 + 1
+        if sub_array_size is None:
+            sub_array_size = L // 2 + 1
+
+        # Number of sub-subarrays
+        number_of_sub_arrays = L - sub_array_size + 1
+        if number_of_sub_arrays <= 0:
+            raise ValueError("sub_array_size is too large for the given L.")
+
+        # Initialize the accumulator for the smoothed covariance
+        R_smoothed = torch.zeros(
+            (batch_size, sub_array_size, sub_array_size),
+            dtype=R_coarray.dtype, device=R_coarray.device
+        )
+
+        # Loop over the possible sub-subarrays
+        for start_idx in range(number_of_sub_arrays):
+            # Extract the sub-block from R_coarray
+            sub_cov = R_coarray[:, start_idx:start_idx + sub_array_size,
+                      start_idx:start_idx + sub_array_size]
+            R_smoothed += sub_cov
+
+        # Average over the number of subarrays
+        R_smoothed /= number_of_sub_arrays
+
+        return R_smoothed
 
     def plot_eigen_spectrum(self, batch_idx: int=0):
         """

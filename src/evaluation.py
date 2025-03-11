@@ -519,8 +519,11 @@ def evaluate_model_based(
             elif "esprit" in algorithm:
                 # esprit = ESPRIT(system_model)
                 if system_model.params.signal_nature == "coherent":
+                    if system_model.is_sparse_array:
+                        Rx = model_based.pre_processing(x, mode="sparse_sps")
+                    else:
                     # Spatial smoothing
-                    Rx = model_based.pre_processing(x, mode="sps")
+                        Rx = model_based.pre_processing(x, mode="sps")
                 else:
                     # Conventional
                     if system_model.is_sparse_array:

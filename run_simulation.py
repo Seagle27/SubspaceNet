@@ -293,6 +293,14 @@ def run_simulation(**kwargs):
                 kwargs["system_model_params"]["eta"] = eta
                 loss = __run_simulation(**kwargs)
                 loss_dict["eta"][eta] = loss
+        if key == "M":
+            loss_dict["M"] = {M: None for M in value}
+            print(f"Testing M (amount of signal) values: {value}")
+            for M in value:
+                kwargs["system_model_params"]["M"] = M
+                loss = __run_simulation(**kwargs)
+                loss_dict["M"][M] = loss
+
     if None not in list(next(iter(loss_dict.values())).values()):
         print_loss_results_from_simulation(loss_dict)
         if kwargs["simulation_commands"]["PLOT_LOSS_RESULTS"]:
