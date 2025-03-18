@@ -156,50 +156,67 @@ class SubspaceMethod(nn.Module):
 
         return Rx
 
-    def __spatial_smoothing_covariance(self, x: torch.Tensor):
+    def __spatial_smoothing_covariance(self, x: torch.Tensor, sub_array_size=None):
         """
-        Calculates the covariance matrix using spatial smoothing technique.
+        Calculates the covariance matrix using forward–backward spatial smoothing technique.
 
         Args:
         -----
-            X (np.ndarray): Input samples matrix.
+            x (torch.Tensor): Input samples matrix with shape
+                              (batch_size, sensor_number, samples_number).
 
         Returns:
         --------
-            covariance_mat (np.ndarray): Covariance matrix.
+            Rx_smoothed (torch.Tensor): Smoothed covariance matrix.
         """
 
+        # Ensure x has three dimensions (batch, sensors, samples)
         if x.dim() == 2:
-            x = x[None, :, :]
+            x = x.unsqueeze(0)
         batch_size, sensor_number, samples_number = x.shape
-        # Define the sub-arrays size
-        sub_array_size = sensor_number // 2 + 1
-        # Define the number of sub-arrays
+
+        # Define subarray size and the number of overlapping subarrays
+        if sub_array_size is None:
+            sub_array_size = sensor_number // 2 + 1
+
         number_of_sub_arrays = sensor_number - sub_array_size + 1
-        # Initialize covariance matrix
-        Rx_smoothed = torch.zeros(batch_size, sub_array_size, sub_array_size, dtype=torch.complex128, device=device)
+
+        # Initialize the smoothed covariance matrix
+        Rx_smoothed = torch.zeros(batch_size, sub_array_size, sub_array_size,
+                                  dtype=torch.complex128, device=x.device)
 
         for j in range(number_of_sub_arrays):
-            # Run over all sub-arrays
+            # Extract the j-th subarray
             x_sub = x[:, j:j + sub_array_size, :]
-            # Calculate sample covariance matrix for each sub-array
-            sub_covariance = torch.einsum("bmt, btl -> bml", x_sub, torch.conj(x_sub).transpose(1, 2)) / (samples_number-1)
-            # Aggregate sub-arrays covariances
-            Rx_smoothed += sub_covariance.to(device) / number_of_sub_arrays
-        # Divide overall matrix by the number of sources
+
+            # Forward covariance calculation
+            cov_forward = torch.einsum("bmt, btl -> bml", x_sub,
+                                       torch.conj(x_sub).transpose(1, 2)) / (samples_number - 1)
+
+            # backward processing: take the complex conjugate before flipping
+            x_sub_back = torch.flip(torch.conj(x_sub), dims=[1])
+            cov_backward = torch.einsum("bmt, btl -> bml", x_sub_back,
+                                        torch.conj(x_sub_back).transpose(1, 2)) / (samples_number - 1)
+
+            # Average the forward and backward covariances for this subarray
+            cov_fb = 0.5 * (cov_forward + cov_backward)
+
+            # Aggregate over all subarrays
+            Rx_smoothed += cov_fb / number_of_sub_arrays
+
         return Rx_smoothed
 
     @staticmethod
     def __spatial_smoothing_coarray_cov(R_coarray: torch.Tensor, sub_array_size: int = None) -> torch.Tensor:
         """
-        Perform forward spatial smoothing on the coarray covariance matrix R_coarray.
+        Perform forward–backward spatial smoothing on the coarray covariance matrix R_coarray.
 
         Parameters
         ----------
         R_coarray : torch.Tensor
             The coarray covariance, shape = [batch_size, L, L].
             - L is the size of the virtual ULA in the coarray domain.
-        sub_array_size : int (optional)
+        sub_array_size : int, optional
             The length of each sub-subarray in the coarray domain.
             If None, it will default to L//2 + 1 (typical choice).
 
@@ -212,29 +229,31 @@ class SubspaceMethod(nn.Module):
         # R_coarray has shape [batch_size, L, L]
         batch_size, L, _ = R_coarray.shape
 
-        # Default choice: K = L//2 + 1
+        # Default subarray size: L//2 + 1 if not provided
         if sub_array_size is None:
             sub_array_size = L // 2 + 1
 
-        # Number of sub-subarrays
+        # Number of forward subarrays
         number_of_sub_arrays = L - sub_array_size + 1
         if number_of_sub_arrays <= 0:
             raise ValueError("sub_array_size is too large for the given L.")
 
-        # Initialize the accumulator for the smoothed covariance
+        # Initialize the smoothed covariance accumulator
         R_smoothed = torch.zeros(
             (batch_size, sub_array_size, sub_array_size),
             dtype=R_coarray.dtype, device=R_coarray.device
         )
 
-        # Loop over the possible sub-subarrays
         for start_idx in range(number_of_sub_arrays):
-            # Extract the sub-block from R_coarray
+            # Extract the forward subarray covariance block
             sub_cov = R_coarray[:, start_idx:start_idx + sub_array_size,
                       start_idx:start_idx + sub_array_size]
-            R_smoothed += sub_cov
+            # Compute the backward covariance block by taking the conjugate and flipping along both dimensions
+            sub_cov_back = torch.flip(torch.conj(sub_cov), dims=[1, 2])
+            # Average the forward and backward covariance blocks
+            R_smoothed += 0.5 * (sub_cov + sub_cov_back)
 
-        # Average over the number of subarrays
+        # Final averaging over the number of subarrays
         R_smoothed /= number_of_sub_arrays
 
         return R_smoothed

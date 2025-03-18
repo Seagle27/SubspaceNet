@@ -24,8 +24,13 @@ class SparseNet(SubspaceNet):
 
         """
         super().__init__(tau, diff_method, system_model, field_type='Far')
-        self.L = len(self.system_model.virtual_array)
+        if self.system_model.is_sparse_array:
+            self.L = len(self.system_model.virtual_array)
+        else:
+            self.L = len(self.system_model.array)
+
         self.differences_array = self.system_model.array[:, None] - self.system_model.array[None, :]
+
 
     def pre_processing(self, x):
         """

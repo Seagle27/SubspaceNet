@@ -483,7 +483,7 @@ def train_model(training_params: TrainingParams, checkpoint_path=None) -> dict:
                     ranges_pred = model_output[1]
                     source_estimation = model_output[2]
                     eigen_regularization = model_output[3]
-                elif isinstance(model, SubspaceNet):
+                elif isinstance(model, SubspaceNet) and not isinstance(model, SparseNet):
                     model_output = model(x, sources_num=sources_num)
                     # in this case there are 2 labels - angles and distances.
                     if training_params.training_objective == "angle, range":
@@ -575,9 +575,6 @@ def train_model(training_params: TrainingParams, checkpoint_path=None) -> dict:
                     train_loss = training_params.criterion(angles_pred.float(), angles.float())
                     warnings.warn(f"train_model: those model weren't tested yet."
                                     f" Deep Augmented MUSIC or DeepCNN or DeepRootMUSIC")
-                elif isinstance(model, SparseNet):
-                    if training_params.training_objective == "angle":
-                        train_loss = training_params.criterion(angles_pred, angles)  #TODO: Complete
 
                 else:
                     raise Exception(f"Model type {training_params.model_type} is not defined")
