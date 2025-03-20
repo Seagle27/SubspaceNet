@@ -46,6 +46,7 @@ system_model_params = {
     "bias": 0,
     "sv_noise_var": 0.0,
     "array_form": 'mra-6',
+    "antenna_pattern": False
 }
 model_config = {
     "model_type": "SparseNet",                # SubspaceNet, DCDMUSIC, DeepCNN, TransMUSIC, DR_MUSIC, SparseNet
