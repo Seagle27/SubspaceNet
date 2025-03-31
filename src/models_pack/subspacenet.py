@@ -69,25 +69,17 @@ class SubspaceNet(ParentModel):
         # Set the subspace method for training
         self.set_diff_method(diff_method, system_model)
 
-    def forward(self, x: torch.Tensor, sources_num: torch.tensor = None, known_angles: torch.tensor = None):
+    def get_surrogate_covariance(self, X: torch.Tensor) -> torch.Tensor:
         """
-        Performs the forward pass of the SubspaceNet.
+            This function is the "real" forward pass of the SubspaceNet.
+            It receives the input tensor and returns the surrogate covariance matrix.
+            Args:
+                x: the input tensor of shape [Batch size, N, T]
 
-        Args:
-        -----
-            x (torch.Tensor): Input tensor of shape [Batch size, N, T].
-            sources_num (torch.Tensor): The number of sources in the signal.
-            known_angles (torch.Tensor): The known angles for the near-field scenario.
-
-        Returns:
-        --------
-            doa_prediction (torch.Tensor): The predicted direction-of-arrival (DOA) for each batch sample.
-            doa_all_predictions (torch.Tensor): All DOA predictions for each root, over all batches.
-            roots_to_return (torch.Tensor): The unsorted roots.
-            Rz (torch.Tensor): Surrogate covariance matrix.
-
+            Returns:
+                Rz: the surrogate covariance matrix of shape [Batch size, N, N]
         """
-        x = self.pre_processing(x)
+        x = self.pre_processing(X)
         # Rx_tau shape: [Batch size, tau, 2N, N]
         N = x.shape[-1]
         self.batch_size = x.shape[0]
@@ -121,7 +113,29 @@ class SubspaceNet(ParentModel):
         Rz = gram_diagonal_overload(
             Kx=Kx_tag, eps=1, batch_size=self.batch_size
         )  # Shape: [Batch size, N, N]
+        return Rz
+
+    def forward(self, x: torch.Tensor, sources_num: torch.tensor = None, known_angles: torch.tensor = None):
+        """
+        Performs the forward pass of the SubspaceNet.
+
+        Args:
+        -----
+            x (torch.Tensor): Input tensor of shape [Batch size, N, T].
+            sources_num (torch.Tensor): The number of sources in the signal.
+            known_angles (torch.Tensor): The known angles for the near-field scenario.
+
+        Returns:
+        --------
+            doa_prediction (torch.Tensor): The predicted direction-of-arrival (DOA) for each batch sample.
+            doa_all_predictions (torch.Tensor): All DOA predictions for each root, over all batches.
+            roots_to_return (torch.Tensor): The unsorted roots.
+            Rz (torch.Tensor): Surrogate covariance matrix.
+
+        """
+
         # Feed surrogate covariance to the differentiable subspace algorithm
+        Rz = self.get_surrogate_covariance(x)
 
         if self.field_type == "Far":
             method_output = self.diff_method(Rz, sources_num)
