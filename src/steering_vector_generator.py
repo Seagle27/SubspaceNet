@@ -1,8 +1,6 @@
 import numpy as np
 from scipy import interpolate
 
-from src.core.model_params import SystemModelParams
-
 
 class SteeringVectorGenerator:
     _instance = None  # shared across all calls

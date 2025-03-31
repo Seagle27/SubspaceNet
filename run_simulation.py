@@ -175,7 +175,8 @@ def __run_simulation(**kwargs):
                            learning_rate=TRAINING_PARAMS["learning_rate"],
                            weight_decay=TRAINING_PARAMS["weight_decay"])
             .set_training_dataset(train_dataset)
-            .set_schedular(step_size=TRAINING_PARAMS["step_size"],
+            .set_schedular(scheduler=TRAINING_PARAMS["scheduler"],
+                           step_size=TRAINING_PARAMS["step_size"],
                            gamma=TRAINING_PARAMS["gamma"])
             .set_criterion(TRAINING_PARAMS["criterion"], TRAINING_PARAMS["balance_factor"])
 

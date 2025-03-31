@@ -78,6 +78,7 @@ training_params = {
     "weight_decay": 1e-9,
     "step_size": 50,
     "gamma": 0.5,
+    "scheduler": "ReduceLROnPlateau",  # StepLR, ReduceLROnPlateau
     "true_doa_train": None,                 # if set, this doa will be set to all samples in the train dataset
     "true_range_train": None,                 # if set, this range will be set to all samples in the train dataset
     "true_doa_test": None,                  # if set, this doa will be set to all samples in the test dataset

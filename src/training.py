@@ -213,7 +213,7 @@ class TrainingParams(object):
             )
         return self
 
-    def set_schedular(self, step_size: float, gamma: float):
+    def set_schedular(self, scheduler, step_size: int, gamma: float):
         """
         Sets the scheduler for learning rate decay.
 
@@ -226,14 +226,18 @@ class TrainingParams(object):
         ----------
         self
         """
+        if scheduler == "StepLR":
+            self.scheduler = lr_scheduler.StepLR(self.optimizer, step_size=step_size, gamma=gamma)
+        elif scheduler == "ReduceLROnPlateau":
+            self.scheduler = lr_scheduler.ReduceLROnPlateau(self.optimizer, mode="min", factor=gamma,
+                                                  patience=10, verbose=True)
+        else:
+            raise ValueError(f"Scheduler {scheduler} is not defined.")
+
         # Number of steps for learning rate decay iteration
         self.step_size = step_size
         # learning rate decay value
         self.gamma = gamma
-        # Assign schedular for learning rate decay
-        self.schedular = lr_scheduler.StepLR(
-            self.optimizer, step_size=step_size, gamma=gamma
-        )
         return self
 
     def set_criterion(self, criterion: str, balance_factor: float = None):
@@ -618,8 +622,6 @@ def train_model(training_params: TrainingParams, checkpoint_path=None) -> dict:
             if epoch_train_loss_angle != 0.0 and epoch_train_loss_distance != 0.0:
                 loss_train_list_angles.append(epoch_train_loss_angle)
                 loss_train_list_ranges.append(epoch_train_loss_distance)
-            # Update schedular
-            training_params.schedular.step()
 
             # Calculate evaluation loss
             valid_loss = evaluate_dnn_model(
@@ -630,6 +632,12 @@ def train_model(training_params: TrainingParams, checkpoint_path=None) -> dict:
                 eigen_regula_weight=eigen_regularization_weight,
             )
             loss_valid_list.append(valid_loss.get("Overall"))
+
+            # Update scheduler
+            if isinstance(training_params.scheduler, lr_scheduler.ReduceLROnPlateau):
+                training_params.scheduler.step(loss_valid_list[-1])
+            else:
+                training_params.scheduler.step()
 
             # Report results
             result_txt = (f"[Epoch : {epoch + 1}/{training_params.epochs}]"
@@ -644,7 +652,7 @@ def train_model(training_params: TrainingParams, checkpoint_path=None) -> dict:
                 acc_valid_list.append(valid_loss.get('Accuracy') * 100)
                 result_txt += (f"\nAccuracy for sources estimation: Train = {100 * epoch_train_acc:.2f}%, "
                                f"Validation = {valid_loss.get('Accuracy') * 100:.2f}%")
-            result_txt += f"\nlr {training_params.schedular.get_last_lr()[0]}"
+            result_txt += f"\nlr {training_params.scheduler.get_last_lr()[0]}"
 
             print(result_txt)
             # Save best model weights

@@ -266,8 +266,8 @@ def parse_arguments():
     parser.add_argument('-op', "--optimizer", type=str, help='Optimizer type', default=optimizer)
     parser.add_argument('-lr', "--learning_rate", type=float, help='Learning rate', default=learning_rate)
     parser.add_argument('-wd', "--weight_decay", type=float, help='Weight decay for optimizer', default=weight_decay)
-    parser.add_argument('-sp', "--step_size", type=int, help='Step size for schedular', default=step_size)
-    parser.add_argument('-gm', "--gamma", type=float, help='Gamma value for schedular', default=gamma)
+    parser.add_argument('-sp', "--step_size", type=int, help='Step size for scheduler', default=step_size)
+    parser.add_argument('-gm', "--gamma", type=float, help='Gamma value for scheduler', default=gamma)
 
     return parser.parse_args()
 
