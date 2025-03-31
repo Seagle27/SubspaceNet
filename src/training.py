@@ -40,13 +40,12 @@ from tqdm import tqdm
 from torch.optim import lr_scheduler
 from sklearn.model_selection import train_test_split
 # internal imports
-from src.utils import *
 from src.criterions import *
 from src.system_model import SystemModel, SystemModelParams
 from src.models import (SubspaceNet, DeepCNN, DeepAugmentedMUSIC,
                         ModelGenerator, DCDMUSIC, TransMUSIC, DeepRootMUSIC, SparseNet)
 from src.evaluation import evaluate_dnn_model
-from src.data_handler import TimeSeriesDataset, collate_fn, SameLengthBatchSampler
+from src.data_handler import collate_fn, SameLengthBatchSampler
 
 
 class TrainingParams(object):

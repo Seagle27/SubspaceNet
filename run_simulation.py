@@ -110,7 +110,6 @@ def __run_simulation(**kwargs):
                     system_model_params=system_model_params,
                     samples_size=samples_size,
                     datasets_path=datasets_path,
-                    train_test_ratio=train_test_ratio,
                     is_training=True,
                 )
             except Exception as e:
@@ -122,11 +121,10 @@ def __run_simulation(**kwargs):
                 load_data = False
         if evaluate_mode:
             try:
-                generic_test_dataset = load_datasets(
+                test_dataset = load_datasets(
                     system_model_params=system_model_params,
-                    samples_size=samples_size,
+                    samples_size=int(samples_size * 0.1),
                     datasets_path=datasets_path,
-                    train_test_ratio=train_test_ratio,
                     is_training=False,
                 )
             except Exception as e:
@@ -138,32 +136,31 @@ def __run_simulation(**kwargs):
                 load_data = False
     if create_data and not load_data:
         # Define which datasets to generate
+        samples_model = Samples(system_model_params, SYSTEM_MODEL_PARAMS['antenna_pattern'])
         print("Creating Data...")
         if train_model:
             # Generate training dataset
-            train_dataset, _ = create_dataset(
-                system_model_params=system_model_params,
+            train_dataset = create_dataset(
+                samples_model=samples_model,
                 samples_size=samples_size,
                 model_type=model_config.model_type,
-                save_datasets=True,
+                save_datasets=SIMULATION_COMMANDS["SAVE_DATASET"],
                 datasets_path=datasets_path,
                 true_doa=TRAINING_PARAMS["true_doa_train"],
                 true_range=TRAINING_PARAMS["true_range_train"],
                 phase="train",
-                real_antenna_pattern=SYSTEM_MODEL_PARAMS['antenna_pattern']
             )
         if evaluate_mode:
             # Generate test dataset
-            generic_test_dataset, _ = create_dataset(
-                system_model_params=system_model_params,
+            test_dataset = create_dataset(
+                samples_model=samples_model,
                 samples_size=int(train_test_ratio * samples_size),
                 model_type=model_config.model_type,
-                save_datasets=True,
+                save_datasets=SIMULATION_COMMANDS["SAVE_DATASET"],
                 datasets_path=datasets_path,
                 true_doa=TRAINING_PARAMS["true_doa_test"],
                 true_range=TRAINING_PARAMS["true_range_test"],
                 phase="test",
-                real_antenna_pattern=SYSTEM_MODEL_PARAMS['antenna_pattern']
             )
 
     if train_model:
@@ -223,7 +220,7 @@ def __run_simulation(**kwargs):
                                                        EVALUATION_PARAMS["balance_factor"])
         # Load datasets for evaluation
         # if not create_data or load_data:
-        #     generic_test_dataset, samples_model = load_datasets(
+        #     test_dataset, samples_model = load_datasets(
         #         system_model_params=system_model_params,
         #         model_type=model_config.model_type,
         #         samples_size=samples_size,
@@ -231,15 +228,15 @@ def __run_simulation(**kwargs):
         #         train_test_ratio=train_test_ratio,
         #     )
 
-        batch_sampler_test = SameLengthBatchSampler(generic_test_dataset, batch_size=1)
-        generic_test_dataset = torch.utils.data.DataLoader(generic_test_dataset,
+        batch_sampler_test = SameLengthBatchSampler(test_dataset, batch_size=1)
+        test_dataset = torch.utils.data.DataLoader(test_dataset,
                                                            collate_fn=collate_fn,
                                                            batch_sampler=batch_sampler_test,
                                                            shuffle=False)
 
         # Evaluate DNN models, augmented and subspace methods
         loss = evaluate(
-            generic_test_dataset=generic_test_dataset,
+            generic_test_dataset=test_dataset,
             criterion=criterion,
             system_model=system_model,
             figures=figures,

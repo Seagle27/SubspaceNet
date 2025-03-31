@@ -90,9 +90,8 @@ evaluation_params = {
     "balance_factor": training_params["balance_factor"],
     "models": {
                 # "DCDMUSIC": {"tau": 8},
-                # "SubspaceNet": {"tau": 8,
-                #                 "diff_method": "music_2D",
-                #                 "field_type": "Near"},
+                "SparseNet": {"tau": 8,
+                              "diff_method": "esprit",}
                 # "TransMUSIC": {},
             },
     "augmented_methods": [
@@ -118,6 +117,7 @@ simulation_commands = {
     "LOAD_MODEL": False,
     "TRAIN_MODEL": True,
     "SAVE_MODEL": True,
+    "SAVE_DATASET": False,
     "EVALUATE_MODE": True,
     "PLOT_RESULTS": False,                       # if True, the learning curves will be plotted
     "PLOT_LOSS_RESULTS": True,                  # if True, the RMSE results of evaluation will be plotted
