@@ -42,7 +42,6 @@ from src.utils import *
 def create_dataset(
         samples_model: Samples,
         samples_size: int,
-        model_type: str = None,
         save_datasets: bool = False,
         datasets_path: Path = None,
         true_doa: list = None,
@@ -56,7 +55,6 @@ def create_dataset(
     -----
         system_model_params (SystemModelParams): an instance of SystemModelParams
         samples_size (float): The size of the dataset.
-        model_type (str): The type of the model.
         save_datasets (bool, optional): Specifies whether to save the dataset. Defaults to False.
         datasets_path (Path, optional): The path for saving the dataset. Defaults to None.
         true_doa (list, optional): Predefined angles. Defaults to None.
@@ -143,7 +141,6 @@ def load_datasets(
     Args:
     -----
         system_model_params (SystemModelParams): an instance of SystemModelParams.
-        model_type (str): The type of the model.
         samples_size (float): The size of the overall dataset.
         datasets_path (Path): The path to the datasets.
         train_test_ratio (float): The ration between train and test datasets.
